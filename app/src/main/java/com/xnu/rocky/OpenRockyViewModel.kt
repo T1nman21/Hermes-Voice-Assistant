@@ -54,21 +54,35 @@ class OpenRockyViewModel(application: Application) : AndroidViewModel(applicatio
 
     val needsOnboarding: Boolean get() = !hasOnboarded || providerStore.instances.value.isEmpty()
 
-    fun completeOnboarding(apiKey: String) {
-        if (apiKey.isNotBlank()) {
+    fun completeOnboarding(hostOrApiKey: String) {
+        if (hostOrApiKey.startsWith("http")) {
+            // Hermes desktop connection — host URL from onboarding
+            val displayHost = hostOrApiKey
+                .removePrefix("http://")
+                .removeSuffix("/v1")
+                .removeSuffix("/")
+            val chatInstance = com.xnu.rocky.providers.ProviderInstance(
+                name = "Hermes ($displayHost)",
+                kind = com.xnu.rocky.providers.ProviderKind.HERMES,
+                modelID = "hermes",
+                customHost = hostOrApiKey
+            )
+            providerStore.save(chatInstance, "hermes-local")
+        } else if (hostOrApiKey.isNotBlank()) {
+            // Legacy: OpenAI API key (fallback for non-Hermes users)
             val chatInstance = com.xnu.rocky.providers.ProviderInstance(
                 name = "OpenAI",
                 kind = com.xnu.rocky.providers.ProviderKind.OPENAI,
                 modelID = "gpt-4o"
             )
-            providerStore.save(chatInstance, apiKey)
+            providerStore.save(chatInstance, hostOrApiKey)
 
             val voiceInstance = com.xnu.rocky.providers.RealtimeProviderInstance(
                 name = "OpenAI Realtime",
                 kind = com.xnu.rocky.providers.RealtimeProviderKind.OPENAI,
                 modelID = RealtimeAdvancedSettings.DEFAULT_REALTIME_MODEL
             )
-            realtimeProviderStore.save(voiceInstance, apiKey)
+            realtimeProviderStore.save(voiceInstance, hostOrApiKey)
         }
         hasOnboarded = true
     }
