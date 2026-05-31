@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Hermes Voice</string>
+    <string name="app_name">Hermes Assistant</string>
 
     <!-- Launcher long-press shortcuts -->
     <string name="shortcut_voice_short">Voice</string>
@@ -10,7 +10,7 @@
     <string name="shortcut_continue_long">Continue the last conversation</string>
 
     <!-- Quick Settings tile -->
-    <string name="tile_voice_label">Hermes Voice</string>
+    <string name="tile_voice_label">Hermes Assistant</string>
     <string name="tile_voice_description">Start a voice conversation with Hermes</string>
 
     <!-- Home screen widget -->

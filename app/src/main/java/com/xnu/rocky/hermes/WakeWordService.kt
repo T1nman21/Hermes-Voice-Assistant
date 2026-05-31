@@ -174,7 +174,7 @@ class WakeWordService : Service() {
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_tile_voice)
-            .setContentTitle("Hermes Voice")
+            .setContentTitle("Hermes Assistant")
             .setContentText(statusText)
             .setOngoing(true)
             .setContentIntent(openPending)

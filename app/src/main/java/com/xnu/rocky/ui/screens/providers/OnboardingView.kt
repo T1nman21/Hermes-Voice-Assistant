@@ -65,7 +65,7 @@ fun OnboardingView(
                             Icon(Icons.Default.Mic, null, tint = OpenRockyPalette.accent, modifier = Modifier.size(40.dp))
                         }
 
-                        Text("Hermes Voice", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = OpenRockyPalette.text, textAlign = TextAlign.Center)
+                        Text("Hermes Assistant", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = OpenRockyPalette.text, textAlign = TextAlign.Center)
                         Text("Your desktop AI agent, now voice-activated on your phone", fontSize = 16.sp, color = OpenRockyPalette.muted, textAlign = TextAlign.Center)
 
                         Spacer(Modifier.height(16.dp))
