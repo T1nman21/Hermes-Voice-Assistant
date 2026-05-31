@@ -31,13 +31,10 @@ fun OnboardingView(
     onSkip: () -> Unit
 ) {
     var step by remember { mutableIntStateOf(0) }
-    var roomCode by remember { mutableStateOf("") }
-    var relayAddress by remember { mutableStateOf("") }
-    var relayPort by remember { mutableStateOf("8643") }
+    var relayUrl by remember { mutableStateOf("") }
+    var roomCode by remember { mutableStateOf("HERM") }
 
-    val fullRelayUrl = if (relayAddress.isNotBlank()) {
-        "ws://$relayAddress:${relayPort.ifBlank { "8643" }}"
-    } else ""
+    val canConnect = relayUrl.isNotBlank() && roomCode.length >= 3
 
     Box(
         modifier = Modifier
@@ -74,7 +71,7 @@ fun OnboardingView(
                             FeatureRow(Icons.Default.Mic, "Wake Word", "Say \"Hey Hermes\" to activate")
                             FeatureRow(Icons.Default.Computer, "Desktop Powered", "Runs on your home PC, not the cloud")
                             FeatureRow(Icons.Default.RecordVoiceOver, "Voice-First", "Talk naturally and get spoken responses")
-                            FeatureRow(Icons.Default.Wifi, "Relay Connected", "Pair with a simple room code — no port forwarding")
+                            FeatureRow(Icons.Default.Wifi, "Relay Connected", "Pair with a room code — works from anywhere via Cloudflare")
                         }
 
                         Spacer(Modifier.height(24.dp))
@@ -94,14 +91,14 @@ fun OnboardingView(
                     }
                 }
                 1 -> {
-                    // Relay + room code entry
+                    // Relay URL + room code entry
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Text("Pair with Your Desktop", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = OpenRockyPalette.text)
+                        Text("Connect via Relay", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = OpenRockyPalette.text)
                         Text(
-                            "Start the relay on your desktop first.\nThen enter the room code shown in the terminal.",
+                            "Run start-relay.bat on your desktop.\nPaste the URL shown in the terminal below.",
                             fontSize = 14.sp,
                             color = OpenRockyPalette.muted,
                             textAlign = TextAlign.Center
@@ -109,28 +106,28 @@ fun OnboardingView(
 
                         Spacer(Modifier.height(8.dp))
 
-                        // Relay address (optional — auto-filled to desktop IP)
+                        // Relay URL (Cloudflare tunnel or local)
                         OutlinedTextField(
-                            value = relayAddress,
-                            onValueChange = { relayAddress = it },
-                            label = { Text("Desktop Address", color = OpenRockyPalette.muted) },
-                            placeholder = { Text("192.168.1.100", color = OpenRockyPalette.label) },
+                            value = relayUrl,
+                            onValueChange = { relayUrl = it },
+                            label = { Text("Relay URL", color = OpenRockyPalette.muted) },
+                            placeholder = { Text("wss://xxx.trycloudflare.com", color = OpenRockyPalette.label) },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                             modifier = Modifier.fillMaxWidth(),
                             colors = rockyTextFieldColors(),
                             shape = RoundedCornerShape(12.dp),
                             singleLine = true,
                             leadingIcon = {
-                                Icon(Icons.Default.Computer, null, tint = OpenRockyPalette.accent)
+                                Icon(Icons.Default.Cloud, null, tint = OpenRockyPalette.accent)
                             }
                         )
 
-                        // Room code (4-6 chars, auto-capitalized)
+                        // Room code
                         OutlinedTextField(
                             value = roomCode,
                             onValueChange = { if (it.length <= 6) roomCode = it.uppercase() },
                             label = { Text("Room Code", color = OpenRockyPalette.muted) },
-                            placeholder = { Text("ABCD", color = OpenRockyPalette.label) },
+                            placeholder = { Text("HERM", color = OpenRockyPalette.label) },
                             keyboardOptions = KeyboardOptions(
                                 keyboardType = KeyboardType.Text,
                                 capitalization = KeyboardCapitalization.Characters
@@ -145,7 +142,7 @@ fun OnboardingView(
                         )
 
                         Text(
-                            "On your desktop, run:\nnode relay/desktop-client.js --room $roomCode",
+                            "On desktop: run start-relay.bat\nOn phone: paste the URL above",
                             fontSize = 11.sp,
                             color = OpenRockyPalette.label,
                             textAlign = TextAlign.Center,
@@ -154,7 +151,6 @@ fun OnboardingView(
 
                         Spacer(Modifier.height(8.dp))
 
-                        val canConnect = relayAddress.isNotBlank() && roomCode.length >= 3
                         Button(
                             onClick = { step = 2 },
                             enabled = canConnect,
@@ -196,8 +192,8 @@ fun OnboardingView(
 
                         Spacer(Modifier.height(24.dp))
 
-                        // Pass relay URL + room code as a composite "key"
-                        val relayKey = "$fullRelayUrl|$roomCode"
+                        // Pass relay URL + room code as a composite key
+                        val relayKey = "$relayUrl|$roomCode"
 
                         Button(
                             onClick = { onComplete(relayKey) },
