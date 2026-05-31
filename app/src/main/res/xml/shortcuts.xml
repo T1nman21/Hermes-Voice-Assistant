@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <shortcut
+        android:shortcutId="start_voice"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_voice_short"
+        android:shortcutLongLabel="@string/shortcut_voice_long">
+        <intent
+            android:action="com.xnu.rocky.action.START_VOICE"
+            android:targetPackage="com.xnu.rocky"
+            android:targetClass="com.xnu.rocky.MainActivity" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="new_chat"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_new_chat_short"
+        android:shortcutLongLabel="@string/shortcut_new_chat_long">
+        <intent
+            android:action="com.xnu.rocky.action.NEW_CHAT"
+            android:targetPackage="com.xnu.rocky"
+            android:targetClass="com.xnu.rocky.MainActivity" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="continue_last"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_continue_short"
+        android:shortcutLongLabel="@string/shortcut_continue_long">
+        <intent
+            android:action="com.xnu.rocky.action.CONTINUE_LAST"
+            android:targetPackage="com.xnu.rocky"
+            android:targetClass="com.xnu.rocky.MainActivity" />
+    </shortcut>
+
+</shortcuts>

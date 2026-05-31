@@ -1,0 +1,31 @@
+<resources>
+    <string name="app_name">Rocky</string>
+
+    <!-- Launcher long-press shortcuts -->
+    <string name="shortcut_voice_short">Voice</string>
+    <string name="shortcut_voice_long">Start a voice conversation</string>
+    <string name="shortcut_new_chat_short">New Chat</string>
+    <string name="shortcut_new_chat_long">Start a new chat</string>
+    <string name="shortcut_continue_short">Continue</string>
+    <string name="shortcut_continue_long">Continue the last conversation</string>
+
+    <!-- Quick Settings tile -->
+    <string name="tile_voice_label">Rocky Voice</string>
+    <string name="tile_voice_description">Start a voice conversation with Rocky</string>
+
+    <!-- Home screen widget -->
+    <string name="widget_voice_label">Rocky</string>
+    <string name="widget_voice_caption">Tap to talk</string>
+    <string name="widget_voice_description">One-tap voice session</string>
+
+    <!-- Foreground voice service notification -->
+    <string name="voice_service_title">Rocky voice session</string>
+    <string name="voice_service_text">Listening — tap to return, Stop to end.</string>
+    <string name="voice_service_stop">Stop</string>
+    <string name="voice_service_channel">Voice session</string>
+    <string name="voice_service_channel_description">Shown while a Rocky voice session is active in the background.</string>
+
+    <!-- Accessibility service -->
+    <string name="accessibility_service_summary">Let Rocky answer \"what am I looking at?\"</string>
+    <string name="accessibility_service_description">When enabled, Rocky can read the visible text on the current screen on demand (via the screen-read tool). Content is never stored — it is only pulled when the assistant is asked and returned for that single response.</string>
+</resources>
