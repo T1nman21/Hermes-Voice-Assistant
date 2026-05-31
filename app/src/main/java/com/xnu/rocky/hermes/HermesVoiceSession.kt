@@ -22,7 +22,8 @@ class HermesVoiceSession(private val context: Context) {
 
     companion object {
         private const val TAG = "HermesSession"
-        private const val DEFAULT_RELAY_URL = "ws://localhost:8643"
+        // Default: Cloudflare Tunnel (works from anywhere on the internet)
+        private const val DEFAULT_RELAY_URL = "wss://hospitality-musicians-hunting-wedding.trycloudflare.com"
     }
 
     private val tts = TtsManager(context)
