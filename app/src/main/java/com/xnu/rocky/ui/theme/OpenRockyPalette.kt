@@ -1,10 +1,6 @@
 //
-// OpenRocky — Voice-first AI Agent
-// https://github.com/openrocky
-//
-// Developed by everettjf with the assistance of Claude Code and Codex.
-// Date: 2026-03-25
-// Copyright (c) 2026 everettjf. All rights reserved.
+// Hermes Voice — brand palette
+// Based on OpenRocky's palette system, with unique Hermes colors
 //
 
 package com.xnu.rocky.ui.theme
@@ -40,19 +36,19 @@ object OpenRockyPalette {
     private val lightMuted = Color(0x80000000)
     private val lightLabel = Color(0x59000000)
 
-    // ── Static variants for non-composable contexts (enums, data classes) ──
+    // ── Static variants for non-composable contexts ──
     val mutedStatic = Color(0x8CFFFFFF)
     val labelStatic = Color(0x66FFFFFF)
 
-    // ── Brand colors (static fallback, used in non-composable contexts like enum properties) ──
-    val accentBrand = Color(0xFF4AC7E3)
-    val secondaryBrand = Color(0xFFFB8C57)
+    // ── Hermes brand colors (purple + amber, distinct from OpenRocky's cyan/orange) ──
+    val accentBrand = Color(0xFF7C3AED)    // Deep violet — primary accent
+    val secondaryBrand = Color(0xFFF59E0B)  // Amber gold — secondary accent
 
-    // ── Voice-mode tint (deep blue, matches iOS post-2026-04 voice palette) ──
-    val voicePrimary = Color(0xFF4D8FE0)
-    val voiceDeep = Color(0xFF1E3A7A)
+    // ── Voice-mode tint (purple gradient) ──
+    val voicePrimary = Color(0xFF8B5CF6)    // Lighter violet
+    val voiceDeep = Color(0xFF4C1D95)       // Deep indigo
 
-    // ── Semantic (same in both modes; not affected by dynamic color) ──
+    // ── Semantic colors ──
     val success = Color(0xFF6EE39E)
     val warning = Color(0xFFFABF59)
     val error = Color(0xFFE35D6A)
@@ -70,17 +66,6 @@ object OpenRockyPalette {
     val muted: Color @Composable @ReadOnlyComposable get() = if (isSystemInDarkTheme()) darkMuted else lightMuted
     val label: Color @Composable @ReadOnlyComposable get() = if (isSystemInDarkTheme()) darkLabel else lightLabel
 
-    /**
-     * Accent color. On Android 12+ with dynamic color enabled, this reflects the user's
-     * wallpaper (Material You). Falls back to the brand cyan otherwise.
-     *
-     * [MaterialTheme.colorScheme.primary] is hooked up to the dynamic scheme inside [OpenRockyTheme]
-     * when running on API 31+; on older devices it resolves to the fixed [accentBrand].
-     */
     val accent: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.primary
-
-    /**
-     * Secondary accent. Follows dynamic color on Android 12+, falls back to brand orange.
-     */
     val secondary: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.secondary
 }

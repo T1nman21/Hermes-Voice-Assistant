@@ -1,10 +1,5 @@
 //
-// OpenRocky — Voice-first AI Agent
-// https://github.com/openrocky
-//
-// Developed by everettjf with the assistance of Claude Code and Codex.
-// Date: 2026-03-25
-// Copyright (c) 2026 everettjf. All rights reserved.
+// Hermes Voice — Theme (forked from OpenRocky)
 //
 
 package com.xnu.rocky.ui.theme
@@ -20,49 +15,53 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
+// Hermes purple palette (replaces Rocky cyan/orange)
+private val HermesPrimary = OpenRockyPalette.accentBrand        // #7C3AED deep violet
+private val HermesSecondary = OpenRockyPalette.secondaryBrand   // #F59E0B amber gold
+private val HermesError = OpenRockyPalette.error
+
+private val HermesDarkBg = Color(0xFF0F1420)
+private val HermesDarkSurface = Color(0xFF1A1F2B)
+private val HermesDarkSurfaceVariant = Color(0xFF212838)
+
+private val HermesLightBg = Color(0xFFF5F5FA)
+private val HermesLightSurface = Color(0xFFFFFFFF)
+private val HermesLightSurfaceVariant = Color(0xFFEDEDF2)
+
 private val FallbackDarkScheme = darkColorScheme(
-    primary = OpenRockyPrimary,
-    secondary = OpenRockySecondary,
-    background = OpenRockyDarkBackground,
-    surface = OpenRockyDarkSurface,
-    surfaceVariant = OpenRockyDarkSurfaceVariant,
+    primary = HermesPrimary,
+    secondary = HermesSecondary,
+    background = HermesDarkBg,
+    surface = HermesDarkSurface,
+    surfaceVariant = HermesDarkSurfaceVariant,
     onPrimary = Color.White,
     onBackground = Color(0xE0FFFFFF),
     onSurface = Color(0xE0FFFFFF),
     onSurfaceVariant = Color(0x8CFFFFFF),
     outline = Color(0x1AFFFFFF),
-    error = OpenRockyError,
+    error = HermesError,
     onError = Color.White,
-    surfaceContainer = OpenRockyDarkSurface,
-    surfaceContainerHigh = OpenRockyDarkSurfaceVariant,
+    surfaceContainer = HermesDarkSurface,
+    surfaceContainerHigh = HermesDarkSurfaceVariant,
 )
 
 private val FallbackLightScheme = lightColorScheme(
-    primary = OpenRockyPrimary,
-    secondary = OpenRockySecondary,
-    background = OpenRockyLightBackground,
-    surface = OpenRockyLightSurface,
-    surfaceVariant = OpenRockyLightSurfaceVariant,
+    primary = HermesPrimary,
+    secondary = HermesSecondary,
+    background = HermesLightBg,
+    surface = HermesLightSurface,
+    surfaceVariant = HermesLightSurfaceVariant,
     onPrimary = Color.White,
     onBackground = Color(0xE0000000),
     onSurface = Color(0xE0000000),
     onSurfaceVariant = Color(0x80000000),
     outline = Color(0x1A000000),
-    error = OpenRockyError,
+    error = HermesError,
     onError = Color.White,
-    surfaceContainer = OpenRockyLightSurface,
-    surfaceContainerHigh = OpenRockyLightSurfaceVariant,
+    surfaceContainer = HermesLightSurface,
+    surfaceContainerHigh = HermesLightSurfaceVariant,
 )
 
-/**
- * Theme entry point.
- *
- * On Android 12+ ([Build.VERSION_CODES.S]), when [dynamicColor] is true (default), the color
- * scheme is derived from the user's current wallpaper (Material You). On older devices or when
- * disabled, the fixed Rocky brand scheme is used instead.
- *
- * This makes Rocky feel like a native Android 12+ citizen — cross-app theming iOS cannot offer.
- */
 @Composable
 fun OpenRockyTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
