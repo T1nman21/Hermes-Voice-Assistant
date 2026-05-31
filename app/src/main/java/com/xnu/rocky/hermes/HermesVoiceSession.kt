@@ -1,47 +1,56 @@
 package com.xnu.rocky.hermes
 
 import android.content.Context
-import com.xnu.rocky.providers.ChatClient
-import com.xnu.rocky.providers.ChatMessage
-import com.xnu.rocky.providers.HermesProviderConfig
-import com.xnu.rocky.providers.ProviderConfiguration
 import com.xnu.rocky.runtime.LogManager
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 
 /**
- * Hermes voice session — manages the full voice interaction loop:
+ * Hermes voice session — manages the full voice interaction loop
+ * through the WebSocket relay (NOT direct HTTP to Hermes):
  *
- * 1. Wake word detected → start listening
- * 2. STT captures speech → convert to text
- * 3. Text sent to Hermes API → stream response
- * 4. TTS speaks the response → loop back to listening
+ * 1. Phone connects to relay via WebSocket
+ * 2. Desktop client also connects to relay (pairing via room code)
+ * 3. Wake word → STT captures speech → text sent via relay
+ * 4. Desktop Hermes processes → response back via relay
+ * 5. TTS speaks the response → loop back to listening
  */
 class HermesVoiceSession(private val context: Context) {
 
     companion object {
         private const val TAG = "HermesSession"
+        private const val DEFAULT_RELAY_URL = "ws://localhost:8643"
     }
 
     private val tts = TtsManager(context)
     private val stt = SttManager(context)
-    private var chatClient: ChatClient? = null
-    private var conversationHistory = mutableListOf<ChatMessage>()
+    private var relayClient: RelayClient? = null
+    private val scopeJob = SupervisorJob()
+    private val scope = CoroutineScope(Dispatchers.Main + scopeJob)
+
+    private var relayUrl: String = DEFAULT_RELAY_URL
+    private var roomCode: String = ""
+    private var isDesktopConnected = false
 
     enum class State {
-        /** Idle, waiting for wake word or manual activation */
-        IDLE,
+        /** Not connected to relay */
+        DISCONNECTED,
+        /** Connected to relay, waiting for desktop partner */
+        WAITING_FOR_DESKTOP,
+        /** Fully connected — ready for voice */
+        READY,
         /** Listening for user speech */
         LISTENING,
-        /** Processing — sending to Hermes and waiting for response */
+        /** Processing — prompt sent, waiting for response */
         PROCESSING,
         /** Speaking the assistant's response */
         SPEAKING
     }
 
-    private val _state = MutableStateFlow(State.IDLE)
+    private val _state = MutableStateFlow(State.DISCONNECTED)
     val state: StateFlow<State> = _state.asStateFlow()
 
     private val _userTranscript = MutableStateFlow("")
@@ -50,35 +59,95 @@ class HermesVoiceSession(private val context: Context) {
     private val _assistantResponse = MutableStateFlow("")
     val assistantResponse: StateFlow<String> = _assistantResponse.asStateFlow()
 
-    private val _statusText = MutableStateFlow("Tap to talk")
+    private val _statusText = MutableStateFlow("Connect to desktop first")
     val statusText: StateFlow<String> = _statusText.asStateFlow()
 
-    private var currentHost: String = HermesProviderConfig.DEFAULT_HOST
-    private var currentModel: String = HermesProviderConfig.DEFAULT_MODEL
-    private var currentApiKey: String = "hermes-local"
+    private var pendingPromptId: String? = null
 
     /**
-     * Configure Hermes connection.
+     * Configure relay connection.
      *
-     * @param host Hermes API base URL (e.g., "http://192.168.1.100:8642/v1")
-     * @param model Model name (default "hermes")
-     * @param apiKey API key (use "hermes-local" for localhost, or real key for remote)
+     * @param relayUrl WebSocket URL of the relay server (default ws://<desktop-ip>:8643)
+     * @param room 4-6 char room code to pair with desktop
      */
-    fun configure(
-        host: String = HermesProviderConfig.DEFAULT_HOST,
-        model: String = HermesProviderConfig.DEFAULT_MODEL,
-        apiKey: String = "hermes-local"
-    ) {
-        currentHost = host
-        currentModel = model
-        currentApiKey = apiKey
-        chatClient = ChatClient(HermesProviderConfig.configuration(host, model, apiKey))
+    fun configure(relayUrl: String = DEFAULT_RELAY_URL, room: String) {
+        this.relayUrl = relayUrl
+        this.roomCode = room
+    }
+
+    /**
+     * Connect to the relay server and wait for desktop pairing.
+     */
+    fun connect() {
+        if (roomCode.isBlank()) {
+            LogManager.warning("Cannot connect: no room code set", TAG)
+            return
+        }
+
+        relayClient?.disconnect()
+        relayClient = RelayClient(relayUrl)
+        _state.value = State.DISCONNECTED
+        _statusText.value = "Connecting to relay..."
+
+        // Observe relay events
+        scope.launch {
+            relayClient?.events?.collect { event ->
+                when (event) {
+                    is RelayClient.RelayEvent.Connected -> {
+                        _state.value = State.WAITING_FOR_DESKTOP
+                        _statusText.value = "Waiting for desktop..."
+                    }
+                    is RelayClient.RelayEvent.PartnerJoined -> {
+                        isDesktopConnected = true
+                        _state.value = State.READY
+                        _statusText.value = "Ready — tap to talk"
+                    }
+                    is RelayClient.RelayEvent.PartnerLeft -> {
+                        isDesktopConnected = false
+                        _state.value = State.WAITING_FOR_DESKTOP
+                        _statusText.value = "Desktop disconnected — waiting..."
+                    }
+                    is RelayClient.RelayEvent.Disconnected -> {
+                        _state.value = State.DISCONNECTED
+                        _statusText.value = "Connection lost — retrying..."
+                    }
+                }
+            }
+        }
+
+        // Observe responses from desktop
+        scope.launch {
+            relayClient?.responses?.collect { response ->
+                if (response.id == pendingPromptId) {
+                    val text = response.text
+                    if (response.error != null) {
+                        _assistantResponse.value = "Error: ${response.error}"
+                        _state.value = State.READY
+                        _statusText.value = "Error — tap to retry"
+                    } else if (text.isNotBlank()) {
+                        _assistantResponse.value = text
+                        speakResponse(text)
+                    } else {
+                        _state.value = State.READY
+                        _statusText.value = "Ready — tap to talk"
+                    }
+                    pendingPromptId = null
+                }
+            }
+        }
+
+        relayClient?.connect(roomCode)
     }
 
     /**
      * Start a voice interaction — begin listening for speech.
      */
     fun startListening() {
+        if (!isDesktopConnected) {
+            _statusText.value = "Desktop not connected. Try reconnecting."
+            return
+        }
+
         _state.value = State.LISTENING
         _userTranscript.value = ""
         _assistantResponse.value = ""
@@ -100,86 +169,37 @@ class HermesVoiceSession(private val context: Context) {
             override fun onFinalResult(text: String) {
                 _userTranscript.value = text
                 if (text.isNotBlank()) {
-                    processUserInput(text)
+                    sendPrompt(text)
                 } else {
-                    _state.value = State.IDLE
-                    _statusText.value = "Tap to talk"
+                    _state.value = State.READY
+                    _statusText.value = "Ready — tap to talk"
                 }
             }
 
             override fun onError(error: Int, message: String) {
                 LogManager.warning("STT error: $message", TAG)
-                _state.value = State.IDLE
-                _statusText.value = "Tap to talk"
+                _state.value = State.READY
+                _statusText.value = "Tap to try again"
             }
         })
     }
 
     /**
-     * Send a text prompt directly (from chat/typing).
+     * Send a text prompt via the relay.
      */
-    fun sendText(text: String) {
-        _userTranscript.value = text
-        processUserInput(text)
-    }
-
-    private fun processUserInput(text: String) {
+    fun sendPrompt(text: String) {
         _state.value = State.PROCESSING
         _statusText.value = "Hermes is thinking..."
+        _userTranscript.value = text
 
-        conversationHistory.add(ChatMessage(role = "user", content = text))
-
-        // Ensure client is configured
-        if (chatClient == null) {
-            configure(currentHost, currentModel, currentApiKey)
-        }
-
-        // Stream response from Hermes
-        val responseBuilder = StringBuilder()
-        val client = chatClient ?: run {
-            _assistantResponse.value = "Error: Hermes not configured"
-            _state.value = State.IDLE
+        val client = relayClient
+        if (client == null || !client.isReady()) {
+            _assistantResponse.value = "Not connected. Connect to desktop first."
+            _state.value = State.DISCONNECTED
             return
         }
 
-        try {
-            // Build messages from conversation history
-            val messages = listOf(
-                ChatMessage(
-                    role = "system",
-                    content = "You are Hermes, a helpful voice assistant. Keep responses concise and conversational for voice interaction."
-                )
-            ) + conversationHistory.toList()
-
-            // Note: Flow collection needs coroutine scope — this runs on the calling thread.
-            // In production, use a coroutine scope (ViewModel scope or similar).
-            kotlinx.coroutines.runBlocking {
-                client.streamChat(messages = messages).collect { delta ->
-                    delta.content?.let { content ->
-                        responseBuilder.append(content)
-                        _assistantResponse.value = responseBuilder.toString()
-                    }
-                    delta.toolCalls?.let { toolCalls ->
-                        responseBuilder.append("[tool: ${toolCalls.joinToString { it.function?.name ?: "?" }}]")
-                        _assistantResponse.value = responseBuilder.toString()
-                    }
-                }
-            }
-
-            val fullResponse = responseBuilder.toString()
-            if (fullResponse.isNotBlank()) {
-                conversationHistory.add(ChatMessage(role = "assistant", content = fullResponse))
-                speakResponse(fullResponse)
-            } else {
-                _state.value = State.IDLE
-                _statusText.value = "Tap to talk"
-            }
-        } catch (e: Exception) {
-            LogManager.error("Hermes API error: ${e.message}", TAG)
-            _assistantResponse.value = "Error: ${e.message}"
-            _state.value = State.IDLE
-            _statusText.value = "Connection error — tap to retry"
-        }
+        pendingPromptId = client.sendPrompt(text)
     }
 
     private fun speakResponse(text: String) {
@@ -188,8 +208,8 @@ class HermesVoiceSession(private val context: Context) {
 
         tts.addOnSpeechDoneListener(object : () -> Unit {
             override fun invoke() {
-                _state.value = State.IDLE
-                _statusText.value = "Tap to talk"
+                _state.value = State.READY
+                _statusText.value = "Ready — tap to talk"
                 tts.removeOnSpeechDoneListener(this)
             }
         })
@@ -203,8 +223,8 @@ class HermesVoiceSession(private val context: Context) {
     fun stop() {
         stt.stopListening()
         tts.stop()
-        _state.value = State.IDLE
-        _statusText.value = "Tap to talk"
+        _state.value = if (isDesktopConnected) State.READY else State.WAITING_FOR_DESKTOP
+        _statusText.value = "Ready — tap to talk"
     }
 
     /**
@@ -212,14 +232,13 @@ class HermesVoiceSession(private val context: Context) {
      */
     fun destroy() {
         stop()
+        relayClient?.disconnect()
+        relayClient = null
         tts.destroy()
         stt.destroy()
-        chatClient = null
-        conversationHistory.clear()
+        scopeJob.cancel()
+        _state.value = State.DISCONNECTED
     }
 
-    /**
-     * Check if Hermes TTS has English voice data installed.
-     */
     fun needsTtsData(): Boolean = !tts.hasEnglishData()
 }

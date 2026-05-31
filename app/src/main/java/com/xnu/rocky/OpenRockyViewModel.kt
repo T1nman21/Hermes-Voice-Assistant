@@ -55,7 +55,14 @@ class OpenRockyViewModel(application: Application) : AndroidViewModel(applicatio
     val needsOnboarding: Boolean get() = !hasOnboarded || providerStore.instances.value.isEmpty()
 
     fun completeOnboarding(hostOrApiKey: String) {
-        if (hostOrApiKey.startsWith("http")) {
+        if (hostOrApiKey.startsWith("ws://") || hostOrApiKey.startsWith("wss://")) {
+            // Relay-based connection: "ws://ip:port|ROOMCODE"
+            val parts = hostOrApiKey.split("|")
+            val relayUrl = parts[0]
+            val roomCode = parts.getOrElse(1) { "HERM" }
+            hermesVoiceSession.configure(relayUrl, roomCode)
+            hermesVoiceSession.connect()
+        } else if (hostOrApiKey.startsWith("http")) {
             // Hermes desktop connection — host URL from onboarding
             val displayHost = hostOrApiKey
                 .removePrefix("http://")

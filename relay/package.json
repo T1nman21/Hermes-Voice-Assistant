@@ -1,0 +1,13 @@
+{
+  "name": "hermes-voice-relay",
+  "version": "1.0.0",
+  "description": "WebSocket relay for Hermes Voice — bridges phone voice assistant to desktop Hermes agent",
+  "main": "relay-server.js",
+  "scripts": {
+    "relay": "node relay-server.js",
+    "client": "node desktop-client.js"
+  },
+  "dependencies": {
+    "ws": "^8.16.0"
+  }
+}

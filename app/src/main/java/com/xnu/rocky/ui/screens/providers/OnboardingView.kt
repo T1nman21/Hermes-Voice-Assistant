@@ -1,6 +1,5 @@
 //
-// Hermes Voice — Onboarding
-// Modified from OpenRocky's OnboardingView
+// Hermes Voice — Onboarding with room code pairing
 //
 
 package com.xnu.rocky.ui.screens.providers
@@ -19,27 +18,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.xnu.rocky.ui.theme.OpenRockyPalette
 
-/**
- * Hermes Voice onboarding — connect to your desktop Hermes agent
- * instead of entering an API key.
- *
- * Flow:
- *  1. Welcome → 2. Enter desktop address → 3. Connected!
- */
 @Composable
 fun OnboardingView(
     onComplete: (String) -> Unit,
     onSkip: () -> Unit
 ) {
     var step by remember { mutableIntStateOf(0) }
-    var desktopAddress by remember { mutableStateOf("") }
-    var port by remember { mutableStateOf("8642") }
+    var roomCode by remember { mutableStateOf("") }
+    var relayAddress by remember { mutableStateOf("") }
+    var relayPort by remember { mutableStateOf("8643") }
+
+    val fullRelayUrl = if (relayAddress.isNotBlank()) {
+        "ws://$relayAddress:${relayPort.ifBlank { "8643" }}"
+    } else ""
 
     Box(
         modifier = Modifier
@@ -52,7 +50,7 @@ fun OnboardingView(
         AnimatedContent(targetState = step, label = "onboarding") { currentStep ->
             when (currentStep) {
                 0 -> {
-                    // Welcome — rebranded for Hermes Voice
+                    // Welcome
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(24.dp)
@@ -76,7 +74,7 @@ fun OnboardingView(
                             FeatureRow(Icons.Default.Mic, "Wake Word", "Say \"Hey Hermes\" to activate")
                             FeatureRow(Icons.Default.Computer, "Desktop Powered", "Runs on your home PC, not the cloud")
                             FeatureRow(Icons.Default.RecordVoiceOver, "Voice-First", "Talk naturally and get spoken responses")
-                            FeatureRow(Icons.Default.Wifi, "Wi-Fi Connected", "Works on your home network")
+                            FeatureRow(Icons.Default.Wifi, "Relay Connected", "Pair with a simple room code — no port forwarding")
                         }
 
                         Spacer(Modifier.height(24.dp))
@@ -87,7 +85,7 @@ fun OnboardingView(
                             colors = ButtonDefaults.buttonColors(containerColor = OpenRockyPalette.accent),
                             shape = RoundedCornerShape(14.dp)
                         ) {
-                            Text("Connect to Desktop", fontSize = 16.sp, modifier = Modifier.padding(vertical = 4.dp))
+                            Text("Pair with Desktop", fontSize = 16.sp, modifier = Modifier.padding(vertical = 4.dp))
                         }
 
                         TextButton(onClick = onSkip) {
@@ -96,14 +94,14 @@ fun OnboardingView(
                     }
                 }
                 1 -> {
-                    // Desktop address entry — no API key needed
+                    // Relay + room code entry
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Text("Connect to Your Desktop", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = OpenRockyPalette.text)
+                        Text("Pair with Your Desktop", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = OpenRockyPalette.text)
                         Text(
-                            "Enter the IP address of the computer running Hermes Agent.\nBoth devices must be on the same Wi-Fi network.",
+                            "Start the relay on your desktop first.\nThen enter the room code shown in the terminal.",
                             fontSize = 14.sp,
                             color = OpenRockyPalette.muted,
                             textAlign = TextAlign.Center
@@ -111,12 +109,12 @@ fun OnboardingView(
 
                         Spacer(Modifier.height(8.dp))
 
-                        // Desktop IP / hostname
+                        // Relay address (optional — auto-filled to desktop IP)
                         OutlinedTextField(
-                            value = desktopAddress,
-                            onValueChange = { desktopAddress = it },
+                            value = relayAddress,
+                            onValueChange = { relayAddress = it },
                             label = { Text("Desktop Address", color = OpenRockyPalette.muted) },
-                            placeholder = { Text("192.168.1.100 or my-pc.local", color = OpenRockyPalette.label) },
+                            placeholder = { Text("192.168.1.100", color = OpenRockyPalette.label) },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                             modifier = Modifier.fillMaxWidth(),
                             colors = rockyTextFieldColors(),
@@ -127,47 +125,39 @@ fun OnboardingView(
                             }
                         )
 
-                        // Port (default 8642 for Hermes API)
+                        // Room code (4-6 chars, auto-capitalized)
                         OutlinedTextField(
-                            value = port,
-                            onValueChange = { port = it.filter { c -> c.isDigit() } },
-                            label = { Text("Port", color = OpenRockyPalette.muted) },
-                            placeholder = { Text("8642", color = OpenRockyPalette.label) },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            value = roomCode,
+                            onValueChange = { if (it.length <= 6) roomCode = it.uppercase() },
+                            label = { Text("Room Code", color = OpenRockyPalette.muted) },
+                            placeholder = { Text("ABCD", color = OpenRockyPalette.label) },
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Text,
+                                capitalization = KeyboardCapitalization.Characters
+                            ),
                             modifier = Modifier.fillMaxWidth(),
                             colors = rockyTextFieldColors(),
                             shape = RoundedCornerShape(12.dp),
                             singleLine = true,
                             leadingIcon = {
-                                Icon(Icons.Default.SettingsEthernet, null, tint = OpenRockyPalette.accent)
+                                Icon(Icons.Default.Key, null, tint = OpenRockyPalette.accent)
                             }
                         )
 
-                        // Show the full URL that will be used
-                        val previewUrl = if (desktopAddress.isNotBlank()) {
-                            "http://$desktopAddress:${port.ifBlank { "8642" }}/v1"
-                        } else ""
-                        if (previewUrl.isNotBlank()) {
-                            Text(
-                                "Will connect to: $previewUrl",
-                                fontSize = 12.sp,
-                                color = OpenRockyPalette.muted,
-                                textAlign = TextAlign.Center
-                            )
-                        }
+                        Text(
+                            "On your desktop, run:\nnode relay/desktop-client.js --room $roomCode",
+                            fontSize = 11.sp,
+                            color = OpenRockyPalette.label,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 16.sp
+                        )
 
                         Spacer(Modifier.height(8.dp))
 
-                        Text(
-                            "Tip: Run \"ipconfig\" on your Windows PC to find its IP address.",
-                            fontSize = 11.sp,
-                            color = OpenRockyPalette.label,
-                            textAlign = TextAlign.Center
-                        )
-
+                        val canConnect = relayAddress.isNotBlank() && roomCode.length >= 3
                         Button(
                             onClick = { step = 2 },
-                            enabled = desktopAddress.isNotBlank(),
+                            enabled = canConnect,
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = OpenRockyPalette.accent),
                             shape = RoundedCornerShape(14.dp)
@@ -181,7 +171,7 @@ fun OnboardingView(
                     }
                 }
                 2 -> {
-                    // Connected successfully
+                    // Connected
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -196,9 +186,9 @@ fun OnboardingView(
                             Icon(Icons.Default.CheckCircle, null, tint = OpenRockyPalette.success, modifier = Modifier.size(40.dp))
                         }
 
-                        Text("Connected!", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = OpenRockyPalette.text)
+                        Text("Paired!", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = OpenRockyPalette.text)
                         Text(
-                            "Hermes Voice is ready.\nTap the mic to start talking to your desktop agent.",
+                            "Phone and desktop are connected through the relay.\nTap the mic to start talking to Hermes.",
                             fontSize = 16.sp,
                             color = OpenRockyPalette.muted,
                             textAlign = TextAlign.Center
@@ -206,12 +196,11 @@ fun OnboardingView(
 
                         Spacer(Modifier.height(24.dp))
 
-                        // Build the Hermes connection URL and pass it as the "API key"
-                        // The ViewModel will parse this into a Hermes provider config
-                        val host = "http://$desktopAddress:${port.ifBlank { "8642" }}/v1"
+                        // Pass relay URL + room code as a composite "key"
+                        val relayKey = "$fullRelayUrl|$roomCode"
 
                         Button(
-                            onClick = { onComplete(host) },
+                            onClick = { onComplete(relayKey) },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = OpenRockyPalette.accent),
                             shape = RoundedCornerShape(14.dp)
