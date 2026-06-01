@@ -149,6 +149,13 @@ fun OpenRockyMainApp(
     val skills by viewModel.customSkillStore.skills.collectAsStateWithLifecycle()
     val mcpServers by viewModel.toolbox.mcpStore.servers.collectAsStateWithLifecycle()
     val voiceAutoStartOnLaunch by viewModel.preferences.voiceAutoStartOnLaunch.collectAsStateWithLifecycle()
+    val hermesState by viewModel.hermesVoiceSession.state.collectAsStateWithLifecycle()
+    val hermesStatus by viewModel.hermesVoiceSession.statusText.collectAsStateWithLifecycle()
+    val hermesTranscript by viewModel.hermesVoiceSession.userTranscript.collectAsStateWithLifecycle()
+    val hermesResponse by viewModel.hermesVoiceSession.assistantResponse.collectAsStateWithLifecycle()
+    val isHermesListening = hermesState == com.xnu.rocky.hermes.HermesVoiceSession.State.LISTENING ||
+            hermesState == com.xnu.rocky.hermes.HermesVoiceSession.State.PROCESSING ||
+            hermesState == com.xnu.rocky.hermes.HermesVoiceSession.State.SPEAKING
 
     // Microphone permission launcher for voice sessions
     val micPermissionLauncher = rememberLauncherForActivityResult(
@@ -267,10 +274,15 @@ fun OpenRockyMainApp(
                     onOpenSettings = { navController.navigate(SettingsRoute) },
                     onOpenChat = { navController.navigate(ChatRoute) },
                     onToggleVoice = {
-                        if (isVoiceActive) {
-                            viewModel.sessionRuntime.stopVoiceSession()
+                        if (isHermesListening) {
+                            viewModel.hermesVoiceSession.stop()
                         } else if (PermissionHelper.hasMicrophone(context)) {
-                            viewModel.sessionRuntime.startVoiceSession()
+                            // Auto-connect with defaults if not yet configured
+                            if (viewModel.hermesVoiceSession.state.value == com.xnu.rocky.hermes.HermesVoiceSession.State.DISCONNECTED) {
+                                viewModel.hermesVoiceSession.configure(room = "HERM")
+                                viewModel.hermesVoiceSession.connect()
+                            }
+                            viewModel.hermesVoiceSession.startListening()
                         } else {
                             micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                         }

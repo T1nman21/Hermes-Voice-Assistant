@@ -144,19 +144,14 @@ class HermesVoiceSession(private val context: Context) {
      * Start a voice interaction — begin listening for speech.
      */
     fun startListening() {
-        if (!isDesktopConnected) {
-            _statusText.value = "Desktop not connected. Try reconnecting."
-            return
-        }
-
         _state.value = State.LISTENING
         _userTranscript.value = ""
         _assistantResponse.value = ""
-        _statusText.value = "Listening..."
+        _statusText.value = if (isDesktopConnected) "Listening..." else "Listening (no desktop)..."
 
         stt.startListening(object : SttManager.SttListener {
             override fun onReady() {
-                _statusText.value = "Listening..."
+                _statusText.value = if (isDesktopConnected) "Listening..." else "Speak — no desktop connected"
             }
 
             override fun onSpeechStart() {
@@ -170,10 +165,16 @@ class HermesVoiceSession(private val context: Context) {
             override fun onFinalResult(text: String) {
                 _userTranscript.value = text
                 if (text.isNotBlank()) {
-                    sendPrompt(text)
+                    if (isDesktopConnected) {
+                        sendPrompt(text)
+                    } else {
+                        _assistantResponse.value = "Desktop not connected. Run: node relay/desktop-client.js --room $roomCode"
+                        _state.value = State.READY
+                        _statusText.value = "Connect desktop first"
+                    }
                 } else {
                     _state.value = State.READY
-                    _statusText.value = "Ready — tap to talk"
+                    _statusText.value = if (isDesktopConnected) "Ready — tap to talk" else "Connect desktop first"
                 }
             }
 
