@@ -50,6 +50,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.okhttp)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.zxing.android.embedded)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

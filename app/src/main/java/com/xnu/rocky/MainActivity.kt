@@ -30,6 +30,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import com.xnu.rocky.hermes.HermesVoiceSession
 import com.xnu.rocky.ui.theme.OpenRockyPalette
 import com.xnu.rocky.ui.theme.OpenRockyTheme
@@ -133,15 +135,49 @@ fun HermesMainApp() {
 @Composable
 fun SetupWizard(onComplete: (url: String, room: String, token: String) -> Unit) {
     var step by remember { mutableIntStateOf(0) }
-    var relayUrl by remember { mutableStateOf("wss://hospitality-musicians-hunting-wedding.trycloudflare.com") }
+    var relayUrl by remember { mutableStateOf("") }
     var roomCode by remember { mutableStateOf("HERM") }
     var token by remember { mutableStateOf("") }
+    var qrError by remember { mutableStateOf<String?>(null) }
+
+    // QR scanner launcher — parses format: wss://url|ROOM|TOKEN
+    val qrLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
+        result.contents?.let { data ->
+            val parts = data.split("|")
+            if (parts.size >= 3) {
+                val url = parts[0]
+                val room = parts[1]
+                val tok = parts.drop(2).joinToString("|")  // token may contain |
+                // QR scan auto-completes — skip the rest of the wizard
+                onComplete(url, room, tok)
+            } else if (parts.size == 2) {
+                // Legacy format: wss://url|ROOM (no token)
+                relayUrl = parts[0]
+                roomCode = parts[1]
+                step = 2  // jump to token entry
+            } else {
+                // Plain URL — just fill the relay URL field
+                relayUrl = data
+                step = 1
+            }
+        }
+    }
+
+    fun launchQrScanner() {
+        qrError = null
+        qrLauncher.launch(ScanOptions().apply {
+            setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+            setPrompt("Point camera at the QR code in the Relay window")
+            setBeepEnabled(false)
+            setOrientationLocked(false)
+        })
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(OpenRockyPalette.background).systemBarsPadding().padding(32.dp)) {
         AnimatedContent(targetState = step, label = "wizard") { currentStep ->
             when (currentStep) {
                 0 -> {
-                    // Step 1: Welcome
+                    // Step 0: Welcome + QR scan (primary) or manual setup
                     Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                         Box(modifier = Modifier.size(80.dp).clip(CircleShape).background(OpenRockyPalette.accent.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
                             Icon(Icons.Default.Mic, null, tint = OpenRockyPalette.accent, modifier = Modifier.size(40.dp))
@@ -149,33 +185,65 @@ fun SetupWizard(onComplete: (url: String, room: String, token: String) -> Unit) 
                         Spacer(Modifier.height(24.dp))
                         Text("Hermes Assistant", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = OpenRockyPalette.text)
                         Spacer(Modifier.height(8.dp))
-                        Text("Voice-activated AI from your desktop.\nConnect once, talk anytime.", fontSize = 15.sp, color = OpenRockyPalette.muted, textAlign = TextAlign.Center)
-                        Spacer(Modifier.height(40.dp))
+                        Text("Voice-activated AI from your desktop.\nScan the QR code or enter details manually.", fontSize = 15.sp, color = OpenRockyPalette.muted, textAlign = TextAlign.Center)
 
-                        OutlineBox("1. Start the relay on your desktop", "Run start-relay.bat")
-                        Spacer(Modifier.height(12.dp))
-                        OutlineBox("2. Enter the tunnel URL", "Copy from the terminal")
-                        Spacer(Modifier.height(12.dp))
-                        OutlineBox("3. Enter the shared secret", "Keep this private")
-                        Spacer(Modifier.height(12.dp))
-                        OutlineBox("4. Tap Connect & start talking", "Voice-to-voice with Hermes")
+                        Spacer(Modifier.height(32.dp))
+
+                        // Primary: Scan QR
+                        Button(
+                            onClick = { launchQrScanner() },
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = OpenRockyPalette.accent),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Icon(Icons.Default.QrCodeScanner, null, tint = OpenRockyPalette.background, modifier = Modifier.size(24.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Text("Scan QR Code", fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                        }
+
+                        if (qrError != null) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(qrError!!, fontSize = 13.sp, color = OpenRockyPalette.error)
+                        }
+
+                        Spacer(Modifier.height(16.dp))
+
+                        // Divider
+                        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            HorizontalDivider(modifier = Modifier.weight(1f), color = OpenRockyPalette.stroke)
+                            Text("  or  ", fontSize = 13.sp, color = OpenRockyPalette.label)
+                            HorizontalDivider(modifier = Modifier.weight(1f), color = OpenRockyPalette.stroke)
+                        }
+
+                        Spacer(Modifier.height(16.dp))
+
+                        // Secondary: manual
+                        OutlinedButton(
+                            onClick = { step = 1 },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Text("Enter Details Manually", fontSize = 15.sp)
+                        }
 
                         Spacer(Modifier.weight(1f))
-                        Button(onClick = { step = 1 }, modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = OpenRockyPalette.accent),
-                            shape = RoundedCornerShape(14.dp)) {
-                            Text("Get Started", fontSize = 16.sp, modifier = Modifier.padding(vertical = 4.dp))
-                        }
+
+                        // How-to hints
+                        OutlineBox("1. Run setup.bat on your desktop", "Opens relay + Cloudflare tunnel")
+                        Spacer(Modifier.height(12.dp))
+                        OutlineBox("2. Scan the QR code in the relay window", "Auto-fills everything — fastest")
+                        Spacer(Modifier.height(12.dp))
+                        OutlineBox("3. Or type the tunnel URL + secret", "From the Cloudflare Tunnel window")
                     }
                 }
                 1 -> {
-                    // Step 2: Relay URL
+                    // Step 1: Relay URL (manual entry)
                     Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                         Text("Step 1 of 3", fontSize = 13.sp, color = OpenRockyPalette.label)
                         Spacer(Modifier.height(8.dp))
                         Text("Relay Connection", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = OpenRockyPalette.text)
                         Spacer(Modifier.height(8.dp))
-                        Text("Paste the URL from start-relay.bat on your desktop.", fontSize = 14.sp, color = OpenRockyPalette.muted, textAlign = TextAlign.Center)
+                        Text("Paste the Cloudflare Tunnel URL from the terminal window.", fontSize = 14.sp, color = OpenRockyPalette.muted, textAlign = TextAlign.Center)
                         Spacer(Modifier.height(24.dp))
 
                         OutlinedTextField(value = relayUrl, onValueChange = { relayUrl = it },
@@ -185,19 +253,22 @@ fun SetupWizard(onComplete: (url: String, room: String, token: String) -> Unit) 
                             leadingIcon = { Icon(Icons.Default.Cloud, null, tint = OpenRockyPalette.accent) },
                             colors = fieldColors(), shape = RoundedCornerShape(12.dp))
                         Spacer(Modifier.height(8.dp))
-                        Text("Already filled in with the current tunnel URL.", fontSize = 11.sp, color = OpenRockyPalette.label)
+                        Text("Tip: Scan the QR code instead — it fills this automatically.", fontSize = 11.sp, color = OpenRockyPalette.label)
 
                         Spacer(Modifier.weight(1f))
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             OutlinedButton(onClick = { step = 0 }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(14.dp)) { Text("Back") }
-                            Button(onClick = { step = 2 }, modifier = Modifier.weight(1f),
+                            Button(
+                                onClick = { step = 2 }, modifier = Modifier.weight(1f),
+                                enabled = relayUrl.isNotBlank(),
                                 colors = ButtonDefaults.buttonColors(containerColor = OpenRockyPalette.accent),
-                                shape = RoundedCornerShape(14.dp)) { Text("Next") }
+                                shape = RoundedCornerShape(14.dp)
+                            ) { Text("Next") }
                         }
                     }
                 }
                 2 -> {
-                    // Step 3: Room code + token
+                    // Step 2: Room code + token
                     Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                         Text("Step 2 of 3", fontSize = 13.sp, color = OpenRockyPalette.label)
                         Spacer(Modifier.height(8.dp))
@@ -233,7 +304,7 @@ fun SetupWizard(onComplete: (url: String, room: String, token: String) -> Unit) 
                     }
                 }
                 3 -> {
-                    // Step 4: Review & connect
+                    // Step 3: Review & connect
                     Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                         Text("Step 3 of 3", fontSize = 13.sp, color = OpenRockyPalette.label)
                         Spacer(Modifier.height(8.dp))
@@ -242,21 +313,22 @@ fun SetupWizard(onComplete: (url: String, room: String, token: String) -> Unit) 
 
                         Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = OpenRockyPalette.cardElevated), shape = RoundedCornerShape(12.dp)) {
                             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                ReviewRow("Relay", relayUrl)
+                                ReviewRow("Relay", relayUrl.ifBlank { "(not set)" })
                                 ReviewRow("Room", roomCode)
                                 ReviewRow("Secret", if (token.isNotEmpty()) "••••${token.takeLast(4)}" else "(none)")
                             }
                         }
 
                         Spacer(Modifier.height(16.dp))
-                        Text("✓ Desktop running start-relay.bat", fontSize = 13.sp, color = OpenRockyPalette.success)
-                        Text("✓ Desktop client connected to relay", fontSize = 13.sp, color = OpenRockyPalette.success)
+                        Text("✓ Desktop running setup.bat", fontSize = 13.sp, color = OpenRockyPalette.success)
+                        Text("✓ Relay server + Cloudflare tunnel active", fontSize = 13.sp, color = OpenRockyPalette.success)
                         Text("✓ Hermes Agent running on desktop", fontSize = 13.sp, color = OpenRockyPalette.success)
 
                         Spacer(Modifier.weight(1f))
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             OutlinedButton(onClick = { step = 2 }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(14.dp)) { Text("Back") }
                             Button(onClick = { onComplete(relayUrl, roomCode, token) }, modifier = Modifier.weight(1f),
+                                enabled = relayUrl.isNotBlank() && roomCode.isNotBlank(),
                                 colors = ButtonDefaults.buttonColors(containerColor = OpenRockyPalette.accent),
                                 shape = RoundedCornerShape(14.dp)) {
                                 Text("Connect", fontSize = 16.sp, modifier = Modifier.padding(vertical = 4.dp))

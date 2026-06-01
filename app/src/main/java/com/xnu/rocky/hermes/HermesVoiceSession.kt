@@ -22,8 +22,7 @@ class HermesVoiceSession(private val context: Context) {
 
     companion object {
         private const val TAG = "HermesSession"
-        // Default: Cloudflare Tunnel (works from anywhere on the internet)
-        private const val DEFAULT_RELAY_URL = "wss://hospitality-musicians-hunting-wedding.trycloudflare.com"
+        // Set via configure() during onboarding — no hardcoded default
     }
 
     private val tts = TtsManager(context)
@@ -32,7 +31,7 @@ class HermesVoiceSession(private val context: Context) {
     private val scopeJob = SupervisorJob()
     private val scope = CoroutineScope(Dispatchers.Main + scopeJob)
 
-    private var relayUrl: String = DEFAULT_RELAY_URL
+    private var relayUrl: String = ""
     private var roomCode: String = ""
     private var sharedToken: String = ""
     private var isDesktopConnected = false
@@ -72,7 +71,7 @@ class HermesVoiceSession(private val context: Context) {
      * @param relayUrl WebSocket URL of the relay server (default ws://<desktop-ip>:8643)
      * @param room 4-6 char room code to pair with desktop
      */
-    fun configure(relayUrl: String = DEFAULT_RELAY_URL, room: String, token: String = "") {
+    fun configure(relayUrl: String = "", room: String, token: String = "") {
         this.relayUrl = relayUrl
         this.roomCode = room
         this.sharedToken = token

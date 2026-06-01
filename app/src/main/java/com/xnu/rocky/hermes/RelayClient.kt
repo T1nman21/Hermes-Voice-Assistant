@@ -26,8 +26,6 @@ class RelayClient(private val relayUrl: String) {
         private const val TAG = "RelayClient"
         private const val PING_INTERVAL_MS = 30_000L
         private const val RECONNECT_DELAY_MS = 3_000L
-        // Cloudflare Tunnel URLs use wss:// to match HTTPS
-        const val DEFAULT_RELAY = "wss://hospitality-musicians-hunting-wedding.trycloudflare.com"
     }
 
     enum class State {

@@ -9,8 +9,9 @@
  *   Phone App ──WS──> Relay <──WS── Desktop Client ──HTTP──> Hermes API
  *
  * Usage:
- *   node relay-server.js              # default port 8643
- *   node relay-server.js --port 9000  # custom port
+ *   node relay-server.js                                      # defaults
+ *   node relay-server.js --port 9000 --room ABCD --token abc  # custom
+ *   node relay-server.js --tunnel-url wss://xxx.trycloudflare.com  # with QR
  *
  * Protocol (JSON over WebSocket):
  *   → {"type":"hello","room":"ABCD","role":"phone"|"desktop"}
@@ -24,34 +25,55 @@ const { WebSocketServer } = require("ws");
 const crypto = require("crypto");
 const qrcode = require("qrcode-terminal");
 
-const PORT = parseInt(process.argv[process.argv.indexOf("--port") + 1]) || 8643;
+// ── CLI args ───────────────────────────────────────────────────────────
+function getArg(flag) {
+  const idx = process.argv.indexOf(flag);
+  return idx >= 0 ? process.argv[idx + 1] : null;
+}
 
-// Generate a random shared secret (or use one passed via --token)
-const TOKEN = process.argv.includes("--token")
-  ? process.argv[process.argv.indexOf("--token") + 1]
-  : crypto.randomBytes(8).toString("hex");
+const PORT = parseInt(getArg("--port")) || 8643;
+const ROOM = getArg("--room") || "HERM";
+const TOKEN = getArg("--token") || crypto.randomBytes(8).toString("hex");
+const TUNNEL_URL = getArg("--tunnel-url") || null;  // e.g. wss://xxx.trycloudflare.com
 
 // Maps room ID → { phone: ws|null, desktop: ws|null, token: string }
 const rooms = new Map();
 
 const wss = new WebSocketServer({ port: PORT });
 
+// ── Startup banner ─────────────────────────────────────────────────────
 console.log(`[relay] Hermes Voice Relay listening on ws://0.0.0.0:${PORT}`);
-console.log(`[relay] Shared secret: ${TOKEN}  (keep this private!)`);
-console.log(`[relay] Desktop connects: node relay/desktop-client.js --room HERM --token ${TOKEN}`);
-console.log(`[relay] Phone connects:  ws://<desktop-ip>:${PORT}`);
-console.log(`[relay] ─────────────────────────────────────────────`);
-console.log(`[relay] For local pairing via QR (same Wi-Fi):`);
-console.log(`[relay]   ws://localhost:${PORT}|HERM|${TOKEN}`);
-console.log(`[relay] ─────────────────────────────────────────────`);
+console.log(`[relay] Room: ${ROOM}  |  Secret: ${TOKEN}`);
+console.log(`[relay] Desktop: node relay/desktop-client.js --room ${ROOM} --token ${TOKEN}`);
 
-// Show QR code for the local connection string (phone on same Wi-Fi)
-const localUrl = `ws://localhost:${PORT}|HERM|${TOKEN}`;
-qrcode.generate(localUrl, { small: true }, (qr) => {
-  console.log(`\n[relay] Scan with Hermes Assistant app (local network):\n`);
-  console.log(qr);
-});
+if (TUNNEL_URL) {
+  console.log(`[relay] ─────────────────────────────────────────────`);
+  console.log(`[relay] Cloudflare Tunnel: ${TUNNEL_URL}`);
+  console.log(`[relay] Phone connects from ANYWHERE via the tunnel`);
+  console.log(`[relay] ─────────────────────────────────────────────`);
+} else {
+  console.log(`[relay] ─────────────────────────────────────────────`);
+  console.log(`[relay] Local mode (same Wi-Fi): ws://<desktop-ip>:${PORT}`);
+  console.log(`[relay] Start with --tunnel-url for remote access via QR`);
+  console.log(`[relay] ─────────────────────────────────────────────`);
+}
 
+// ── QR Code ────────────────────────────────────────────────────────────
+// The QR encodes:  <tunnel-url-or-localhost>|<ROOM>|<TOKEN>
+// The app parses this and auto-fills relay URL, room code, and token.
+const qrBase = TUNNEL_URL || `ws://localhost:${PORT}`;
+const qrData = `${qrBase}|${ROOM}|${TOKEN}`;
+
+setTimeout(() => {
+  qrcode.generate(qrData, { small: true }, (qr) => {
+    const mode = TUNNEL_URL ? `Cloudflare Tunnel (works from anywhere)` : `local network (same Wi-Fi)`;
+    console.log(`\n[relay] ┌─ Scan with Hermes Assistant app ─ ${mode}`);
+    console.log(`[relay] │  Or copy: ${qrData}`);
+    console.log(qr.split("\n").map(l => `[relay] │ ${l}`).join("\n"));
+  });
+}, 500);  // small delay so banner prints first
+
+// ── WebSocket handling ─────────────────────────────────────────────────
 wss.on("connection", (ws, req) => {
   let roomId = null;
   let role = null;
