@@ -1,0 +1,4 @@
+name: hermes-voice-relay
+version: 1.0.0
+description: Voice assistant relay for the Hermes Assistant Android app. Scan the QR code and talk to Hermes from your phone.
+install_hint: "pip install websockets qrcode"
