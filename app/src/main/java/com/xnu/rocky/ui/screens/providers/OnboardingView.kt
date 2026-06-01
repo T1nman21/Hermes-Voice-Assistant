@@ -31,7 +31,7 @@ fun OnboardingView(
     onSkip: () -> Unit
 ) {
     var step by remember { mutableIntStateOf(0) }
-    var relayUrl by remember { mutableStateOf("") }
+    var relayUrl by remember { mutableStateOf("wss://hospitality-musicians-hunting-wedding.trycloudflare.com") }
     var roomCode by remember { mutableStateOf("HERM") }
 
     val canConnect = relayUrl.isNotBlank() && roomCode.length >= 3
@@ -192,8 +192,11 @@ fun OnboardingView(
 
                         Spacer(Modifier.height(24.dp))
 
-                        // Pass relay URL + room code as a composite key
-                        val relayKey = "$relayUrl|$roomCode"
+                        // Use default tunnel URL if none entered
+                        val effectiveUrl = relayUrl.ifBlank {
+                            "wss://hospitality-musicians-hunting-wedding.trycloudflare.com"
+                        }
+                        val relayKey = "$effectiveUrl|$roomCode"
 
                         Button(
                             onClick = { onComplete(relayKey) },
