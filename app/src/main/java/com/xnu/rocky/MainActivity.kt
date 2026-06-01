@@ -50,7 +50,7 @@ fun HermesMainApp() {
             hermesState == HermesVoiceSession.State.SPEAKING
 
     var showOnboarding by remember { mutableStateOf(viewModel.needsOnboarding) }
-    var relayUrl by remember { mutableStateOf("") }
+    var relayUrl by remember { mutableStateOf("wss://hospitality-musicians-hunting-wedding.trycloudflare.com") }
     var roomCode by remember { mutableStateOf("HERM") }
     var token by remember { mutableStateOf("") }
 
