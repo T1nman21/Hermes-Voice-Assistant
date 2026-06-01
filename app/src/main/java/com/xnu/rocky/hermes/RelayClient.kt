@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger
  *   ← {"type":"response","text":"...","id":"msg-1","error":null}
  *   ← {"type":"partner_joined"|"partner_left"}
  */
-class RelayClient(private val relayUrl: String) {
+class RelayClient {
 
     companion object {
         private const val TAG = "RelayClient"
@@ -32,17 +32,18 @@ class RelayClient(private val relayUrl: String) {
         DISCONNECTED,
         CONNECTING,
         CONNECTED,
-        JOINED,      // hello sent, waiting for ready
-        READY,        // fully connected, can send prompts
+        JOINED,
+        READY,
     }
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(0, TimeUnit.MILLISECONDS) // infinite read for WS
+        .readTimeout(0, TimeUnit.MILLISECONDS)
         .pingInterval(PING_INTERVAL_MS, TimeUnit.MILLISECONDS)
         .build()
 
     private var ws: WebSocket? = null
+    private var relayUrl: String = ""
     private var roomId: String? = null
     private var token: String = ""
     private val msgCounter = AtomicInteger(0)
@@ -75,20 +76,28 @@ class RelayClient(private val relayUrl: String) {
     }
 
     /**
-     * Connect to the relay and join a room.
-     *
-     * @param room 4-6 character room code (same as desktop client)
+     * Configure relay connection parameters. Call before connect().
      */
-    fun connect(room: String, token: String = "") {
-        roomId = room
+    fun configure(relayUrl: String, room: String, token: String = "") {
+        this.relayUrl = relayUrl
+        this.roomId = room
         this.token = token
+    }
+
+    /**
+     * Connect to the relay server and join a room.
+     * Must call configure() first (or pass parameters).
+     */
+    fun connect() {
+        val room = roomId ?: return
+        val url = relayUrl
         scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
         _state.value = State.CONNECTING
 
-        LogManager.info("Connecting to relay: $relayUrl room=$room", TAG)
+        LogManager.info("Connecting to relay: $url room=$room", TAG)
 
         val request = Request.Builder()
-            .url(relayUrl)
+            .url(url)
             .build()
 
         ws = client.newWebSocket(request, object : WebSocketListener() {
@@ -139,7 +148,7 @@ class RelayClient(private val relayUrl: String) {
                     _responses.tryEmit(RelayResponse(
                         text = msg.optString("text", ""),
                         id = msg.optString("id", ""),
-                        error = msg.optString("error", null)
+                        error = if (msg.has("error") && !msg.isNull("error")) msg.getString("error") else null
                     ))
                 }
                 "partner_joined" -> {
@@ -173,7 +182,7 @@ class RelayClient(private val relayUrl: String) {
     private fun scheduleReconnect() {
         scope?.launch {
             delay(RECONNECT_DELAY_MS)
-            roomId?.let { connect(it, token) }
+            connect()
         }
     }
 

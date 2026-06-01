@@ -36,6 +36,7 @@
 # Coil
 -keep class coil.** { *; }
 
-# Keep line numbers for debugging
+# Porcupine wake word
+-keep class ai.picovoice.** { *; }
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile

@@ -16,6 +16,11 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.1.0"
+
+        // Picovoice access key — set in ~/.gradle/gradle.properties:
+        //   picovoiceAccessKey=YOUR_KEY
+        buildConfigField("String", "PICOVOICE_ACCESS_KEY",
+            "\"${project.findProperty("picovoiceAccessKey") ?: ""}\"")
     }
 
     buildTypes {
@@ -31,6 +36,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -51,6 +57,7 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.zxing.android.embedded)
+    implementation(libs.porcupine.android)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
