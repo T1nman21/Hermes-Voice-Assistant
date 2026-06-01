@@ -22,6 +22,7 @@
 
 const { WebSocketServer } = require("ws");
 const crypto = require("crypto");
+const qrcode = require("qrcode-terminal");
 
 const PORT = parseInt(process.argv[process.argv.indexOf("--port") + 1]) || 8643;
 
@@ -39,6 +40,17 @@ console.log(`[relay] Hermes Voice Relay listening on ws://0.0.0.0:${PORT}`);
 console.log(`[relay] Shared secret: ${TOKEN}  (keep this private!)`);
 console.log(`[relay] Desktop connects: node relay/desktop-client.js --room HERM --token ${TOKEN}`);
 console.log(`[relay] Phone connects:  ws://<desktop-ip>:${PORT}`);
+console.log(`[relay] ─────────────────────────────────────────────`);
+console.log(`[relay] For local pairing via QR (same Wi-Fi):`);
+console.log(`[relay]   ws://localhost:${PORT}|HERM|${TOKEN}`);
+console.log(`[relay] ─────────────────────────────────────────────`);
+
+// Show QR code for the local connection string (phone on same Wi-Fi)
+const localUrl = `ws://localhost:${PORT}|HERM|${TOKEN}`;
+qrcode.generate(localUrl, { small: true }, (qr) => {
+  console.log(`\n[relay] Scan with Hermes Assistant app (local network):\n`);
+  console.log(qr);
+});
 
 wss.on("connection", (ws, req) => {
   let roomId = null;

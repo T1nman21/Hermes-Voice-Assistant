@@ -8,6 +8,7 @@
     "client": "node desktop-client.js"
   },
   "dependencies": {
+    "qrcode-terminal": "^0.12.0",
     "ws": "^8.16.0"
   }
 }
