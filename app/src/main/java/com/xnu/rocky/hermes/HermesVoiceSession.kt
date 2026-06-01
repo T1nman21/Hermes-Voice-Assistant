@@ -34,6 +34,7 @@ class HermesVoiceSession(private val context: Context) {
 
     private var relayUrl: String = DEFAULT_RELAY_URL
     private var roomCode: String = ""
+    private var sharedToken: String = ""
     private var isDesktopConnected = false
 
     enum class State {
@@ -71,9 +72,10 @@ class HermesVoiceSession(private val context: Context) {
      * @param relayUrl WebSocket URL of the relay server (default ws://<desktop-ip>:8643)
      * @param room 4-6 char room code to pair with desktop
      */
-    fun configure(relayUrl: String = DEFAULT_RELAY_URL, room: String) {
+    fun configure(relayUrl: String = DEFAULT_RELAY_URL, room: String, token: String = "") {
         this.relayUrl = relayUrl
         this.roomCode = room
+        this.sharedToken = token
     }
 
     /**
@@ -137,7 +139,7 @@ class HermesVoiceSession(private val context: Context) {
             }
         }
 
-        relayClient?.connect(roomCode)
+        relayClient?.connect(roomCode, sharedToken)
     }
 
     /**

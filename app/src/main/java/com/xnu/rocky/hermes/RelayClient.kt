@@ -46,6 +46,7 @@ class RelayClient(private val relayUrl: String) {
 
     private var ws: WebSocket? = null
     private var roomId: String? = null
+    private var token: String = ""
     private val msgCounter = AtomicInteger(0)
     private var scope: CoroutineScope? = null
 
@@ -80,8 +81,9 @@ class RelayClient(private val relayUrl: String) {
      *
      * @param room 4-6 character room code (same as desktop client)
      */
-    fun connect(room: String) {
+    fun connect(room: String, token: String = "") {
         roomId = room
+        this.token = token
         scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
         _state.value = State.CONNECTING
 
@@ -96,7 +98,7 @@ class RelayClient(private val relayUrl: String) {
                 LogManager.info("Relay WebSocket opened", TAG)
                 _state.value = State.CONNECTED
                 // Send hello to join the room
-                val hello = """{"type":"hello","room":"$room","role":"phone"}"""
+                val hello = """{"type":"hello","room":"$room","role":"phone","token":"$token"}"""
                 webSocket.send(hello)
                 _state.value = State.JOINED
             }
@@ -173,7 +175,7 @@ class RelayClient(private val relayUrl: String) {
     private fun scheduleReconnect() {
         scope?.launch {
             delay(RECONNECT_DELAY_MS)
-            roomId?.let { connect(it) }
+            roomId?.let { connect(it, token) }
         }
     }
 

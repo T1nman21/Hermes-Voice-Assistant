@@ -33,6 +33,7 @@ fun OnboardingView(
     var step by remember { mutableIntStateOf(0) }
     var relayUrl by remember { mutableStateOf("wss://hospitality-musicians-hunting-wedding.trycloudflare.com") }
     var roomCode by remember { mutableStateOf("HERM") }
+    var relayToken by remember { mutableStateOf("") }
 
     val canConnect = relayUrl.isNotBlank() && roomCode.length >= 3
 
@@ -141,6 +142,22 @@ fun OnboardingView(
                             }
                         )
 
+                        // Shared secret / token (shown in relay terminal)
+                        OutlinedTextField(
+                            value = relayToken,
+                            onValueChange = { relayToken = it },
+                            label = { Text("Shared Secret", color = OpenRockyPalette.muted) },
+                            placeholder = { Text("hex token from relay terminal", color = OpenRockyPalette.label) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = rockyTextFieldColors(),
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true,
+                            leadingIcon = {
+                                Icon(Icons.Default.Lock, null, tint = OpenRockyPalette.accent)
+                            }
+                        )
+
                         Text(
                             "On desktop: run start-relay.bat\nOn phone: paste the URL above",
                             fontSize = 11.sp,
@@ -196,7 +213,7 @@ fun OnboardingView(
                         val effectiveUrl = relayUrl.ifBlank {
                             "wss://hospitality-musicians-hunting-wedding.trycloudflare.com"
                         }
-                        val relayKey = "$effectiveUrl|$roomCode"
+                        val relayKey = "$effectiveUrl|$roomCode|$relayToken"
 
                         Button(
                             onClick = { onComplete(relayKey) },

@@ -19,6 +19,7 @@ const WebSocket = require("ws");
 
 // ── Config ──────────────────────────────────────────────────────────────
 const ROOM = getArg("--room") || "HERM";
+const TOKEN = getArg("--token") || process.env.HERMES_RELAY_TOKEN || "";
 const RELAY_URL = process.env.RELAY_URL || getArg("--relay") || "ws://localhost:8643";
 const HERMES_URL = process.env.HERMES_API_URL || getArg("--hermes") || "http://localhost:8642/v1";
 const HERMES_MODEL = getArg("--model") || "hermes";
@@ -41,7 +42,7 @@ function connect() {
   ws.on("open", () => {
     console.log(`[desktop] Connected. Joining room "${ROOM}"`);
     reconnectDelay = 1000;
-    ws.send(JSON.stringify({ type: "hello", room: ROOM, role: "desktop" }));
+    ws.send(JSON.stringify({ type: "hello", room: ROOM, role: "desktop", token: TOKEN }));
   });
 
   ws.on("message", async (raw) => {
@@ -139,6 +140,7 @@ async function sendToHermes(text, msgId) {
 // ── Start ───────────────────────────────────────────────────────────────
 console.log("=== Hermes Voice Desktop Client ===");
 console.log(`Room:      ${ROOM}`);
+console.log(`Token:     ${TOKEN || "(required — pass --token <secret>)"}`);
 console.log(`Relay:     ${RELAY_URL}`);
 console.log(`Hermes:    ${HERMES_URL}`);
 console.log(`Model:     ${HERMES_MODEL}`);

@@ -21,16 +21,23 @@
  */
 
 const { WebSocketServer } = require("ws");
+const crypto = require("crypto");
 
 const PORT = parseInt(process.argv[process.argv.indexOf("--port") + 1]) || 8643;
 
-// Maps room ID → { phone: ws|null, desktop: ws|null }
+// Generate a random shared secret (or use one passed via --token)
+const TOKEN = process.argv.includes("--token")
+  ? process.argv[process.argv.indexOf("--token") + 1]
+  : crypto.randomBytes(8).toString("hex");
+
+// Maps room ID → { phone: ws|null, desktop: ws|null, token: string }
 const rooms = new Map();
 
 const wss = new WebSocketServer({ port: PORT });
 
 console.log(`[relay] Hermes Voice Relay listening on ws://0.0.0.0:${PORT}`);
-console.log(`[relay] Desktop connects: ws://localhost:${PORT}`);
+console.log(`[relay] Shared secret: ${TOKEN}  (keep this private!)`);
+console.log(`[relay] Desktop connects: node relay/desktop-client.js --room HERM --token ${TOKEN}`);
 console.log(`[relay] Phone connects:  ws://<desktop-ip>:${PORT}`);
 
 wss.on("connection", (ws, req) => {
@@ -53,15 +60,22 @@ wss.on("connection", (ws, req) => {
       case "hello": {
         roomId = msg.room;
         role = msg.role;
+        const clientToken = msg.token || "";
 
         if (!roomId || !["phone", "desktop"].includes(role)) {
           ws.send(JSON.stringify({ type: "error", message: "hello requires room and role (phone|desktop)" }));
           return;
         }
 
+        if (clientToken !== TOKEN) {
+          ws.send(JSON.stringify({ type: "error", message: "invalid token — check your shared secret" }));
+          ws.close();
+          return;
+        }
+
         // Join room
         if (!rooms.has(roomId)) {
-          rooms.set(roomId, { phone: null, desktop: null });
+          rooms.set(roomId, { phone: null, desktop: null, token: TOKEN });
         }
         const room = rooms.get(roomId);
 
