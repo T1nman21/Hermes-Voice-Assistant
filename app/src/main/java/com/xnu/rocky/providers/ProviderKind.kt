@@ -21,6 +21,15 @@ enum class ProviderKind(
     val guideUrl: String,
     val baseUrl: String
 ) {
+    HERMES(
+        displayName = "Hermes (Recommended)",
+        summary = "Self-hosted — runs on your desktop",
+        defaultModel = "hermes",
+        suggestedModels = listOf("hermes"),
+        apiKeyPlaceholder = "hermes-local",
+        guideUrl = "http://localhost:8642/v1",
+        baseUrl = "http://localhost:8642/v1/"
+    ),
     OPENAI(
         displayName = "OpenAI",
         summary = "GPT-5, GPT-5 mini, GPT-4o",
@@ -128,14 +137,5 @@ enum class ProviderKind(
         apiKeyPlaceholder = "Partial Key",
         guideUrl = "https://www.aiproxy.pro",
         baseUrl = ""
-    ),
-    HERMES(
-        displayName = "Hermes",
-        summary = "Local Hermes agent on your desktop",
-        defaultModel = "hermes",
-        suggestedModels = listOf("hermes"),
-        apiKeyPlaceholder = "hermes-local",
-        guideUrl = "http://localhost:8642/v1",
-        baseUrl = "http://localhost:8642/v1/"
     );
 }

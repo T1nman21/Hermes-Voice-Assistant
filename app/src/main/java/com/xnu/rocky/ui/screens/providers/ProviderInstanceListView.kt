@@ -67,6 +67,7 @@ fun ProviderInstanceListView(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("No providers configured", color = OpenRockyPalette.muted, fontSize = 16.sp)
+                    Text("Add a self-hosted Hermes provider to get started.", color = OpenRockyPalette.label, fontSize = 13.sp)
                     Spacer(Modifier.height(16.dp))
                     Button(
                         onClick = onAdd,
@@ -74,7 +75,7 @@ fun ProviderInstanceListView(
                     ) {
                         Icon(Icons.Default.Add, null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Add Provider")
+                        Text("Add Hermes Provider")
                     }
                 }
             }
@@ -113,7 +114,18 @@ fun ProviderInstanceListView(
                                     Box(Modifier.size(8.dp).clip(CircleShape).background(OpenRockyPalette.accent))
                                 }
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(instance.name.ifBlank { instance.kind.displayName }, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = OpenRockyPalette.text)
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(instance.name.ifBlank { instance.kind.displayName }, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = OpenRockyPalette.text)
+                                        if (instance.kind == com.xnu.rocky.providers.ProviderKind.HERMES) {
+                                            Spacer(Modifier.width(8.dp))
+                                            Surface(
+                                                color = OpenRockyPalette.accent.copy(alpha = 0.15f),
+                                                shape = RoundedCornerShape(4.dp)
+                                            ) {
+                                                Text("Self-Hosted", fontSize = 10.sp, color = OpenRockyPalette.accent, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                            }
+                                        }
+                                    }
                                     Text("${instance.kind.displayName} · ${instance.modelID.ifBlank { instance.kind.defaultModel }}", fontSize = 12.sp, color = OpenRockyPalette.muted)
                                 }
                                 IconButton(onClick = { onEdit(instance.id) }) {

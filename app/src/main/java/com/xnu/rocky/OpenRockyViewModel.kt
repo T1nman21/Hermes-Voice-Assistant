@@ -70,7 +70,7 @@ class OpenRockyViewModel(application: Application) : AndroidViewModel(applicatio
                 .removeSuffix("/v1")
                 .removeSuffix("/")
             val chatInstance = com.xnu.rocky.providers.ProviderInstance(
-                name = "Hermes ($displayHost)",
+                name = "Hermes (Self-Hosted)",
                 kind = com.xnu.rocky.providers.ProviderKind.HERMES,
                 modelID = "hermes",
                 customHost = hostOrApiKey

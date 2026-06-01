@@ -85,7 +85,7 @@ fun ProviderInstanceEditorView(
     val isNew = existingInstance == null
 
     var name by remember { mutableStateOf(existingInstance?.name ?: "") }
-    var selectedKind by remember { mutableStateOf(existingInstance?.kind ?: ProviderKind.OPENAI) }
+    var selectedKind by remember { mutableStateOf(existingInstance?.kind ?: ProviderKind.HERMES) }
     var modelID by remember { mutableStateOf(existingInstance?.modelID ?: "") }
     var credential by remember { mutableStateOf(existingCredential) }
     var openAIAuthMethod by remember {
