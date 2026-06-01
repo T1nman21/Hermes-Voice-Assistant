@@ -17,8 +17,8 @@ set "TOKEN=%random%%random%%random%"
 set "TOKEN=!TOKEN:~0,16!"
 set "ROOM=HERM"
 
-:: Kill existing processes
-powershell -Command "Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force" 2>nul
+:: Kill existing Hermes relay/desktop processes (NOT the current terminal)
+powershell -Command "Get-Process node -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -like '*Hermes*' -or $_.MainWindowTitle -like '*Cloudflare*' } | Stop-Process -Force" 2>nul
 
 :: ── Prerequisites ─────────────────────────────────────────────────────
 where node >nul 2>&1

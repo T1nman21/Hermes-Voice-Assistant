@@ -125,11 +125,13 @@ wss.on("connection", (ws, req) => {
 
         ws.send(JSON.stringify({ type: "ready", room: roomId, role }));
 
-        // Notify partner
+        // Notify existing partner about the new joiner
         const partnerRole = role === "phone" ? "desktop" : "phone";
         const partner = room[partnerRole];
         if (partner && partner.readyState === 1) {
           partner.send(JSON.stringify({ type: "partner_joined", role }));
+          // Also notify the new joiner about the existing partner
+          ws.send(JSON.stringify({ type: "partner_joined", role: partnerRole }));
         }
         break;
       }
