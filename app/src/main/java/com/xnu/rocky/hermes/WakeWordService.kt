@@ -124,7 +124,7 @@ class WakeWordService : Service() {
     @Suppress("unused")
     private fun onWakeWordDetected() {
         val intent = Intent(this, MainActivity::class.java).apply {
-            action = com.xnu.rocky.ACTION_START_VOICE
+            action = "com.xnu.rocky.action.START_VOICE"
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
         startActivity(intent)
